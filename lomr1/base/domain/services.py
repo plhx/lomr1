@@ -4,7 +4,11 @@ from typing import Iterable, Optional
 from .models import *
 
 
-__all__ = ['MonsterAttackService', 'MonsterQueueService', 'GameService']
+__all__ = [
+    'MonsterAttackService',
+    'MonsterQueueService',
+    'GameService'
+]
 
 
 class MonsterAttackService:
@@ -24,7 +28,7 @@ class MonsterAttackService:
         return self.rng.random() < self.armor_block \
             if defense & Defense.ARMOR else False
 
-    def __damage(self, attacker: IMonster, defender: IMonster) -> int:
+    def __damage(self, attacker: Monster, defender: Monster) -> int:
         dmg_g, dmg_a = self.__DAMAGE_TABLE[attacker.attack]
         if attacker.has_antiair:
             if dmg_a == 0:
@@ -36,8 +40,8 @@ class MonsterAttackService:
             dmg = max(dmg - self.__armor_test(defender.defense), 0)
         return dmg
 
-    def __target(self, attacker: IMonster,
-        defenders: Iterable[IMonster]) -> Iterable[IMonster]:
+    def __target(self, attacker: Monster,
+        defenders: Iterable[Monster]) -> Iterable[Monster]:
         if attacker.attack == Attack.BREATH:
             return defenders
         return random.choices(
@@ -47,25 +51,25 @@ class MonsterAttackService:
             k=1
         )
 
-    def attack(self, attacker: IMonster, defenders: Iterable[IMonster]) -> None:
+    def attack(self, attacker: Monster, defenders: Iterable[Monster]) -> None:
         for defender in self.__target(attacker, defenders):
             damage = self.__damage(attacker, defender)
             defender.hp = max(defender.hp - damage, 0)
 
 
 class MonsterQueueService:
-    def __init__(self, team: Team, monsters: Iterable[IMonster]=()):
+    def __init__(self, team: Team, monsters: Iterable[Monster]=()):
         self.team = team
         self.__queue = collections.deque(monsters)
 
-    def push(self, monster: IMonster) -> None:
+    def push(self, monster: Monster) -> None:
         if monster in self.__queue:
             return
         elif monster.is_dead:
             return
         self.__queue.append(monster)
 
-    def pop(self) -> Optional[IMonster]:
+    def pop(self) -> Optional[Monster]:
         return None if self.is_empty else self.__queue.popleft()
 
     def purge(self) -> None:
@@ -79,12 +83,12 @@ class MonsterQueueService:
         return not self.__queue
 
     @property
-    def monsters(self) -> Iterable[IMonster]:
+    def monsters(self) -> Iterable[Monster]:
         return tuple(self.__queue)
 
 
 class GameService:
-    def __init__(self, team_red: Iterable[IMonster], team_blue: Iterable[IMonster]):
+    def __init__(self, team_red: Iterable[Monster], team_blue: Iterable[Monster]):
         if sum(m.is_leader for m in team_red) != 1:
             raise ValueError('no leader exists')
         if sum(m.is_leader for m in team_blue) != 1:
