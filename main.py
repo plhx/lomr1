@@ -9,10 +9,12 @@ def on_begin(n, genes):
 
 def on_end(n, genes):
     for gene in genes[:5]:
-        print(gene)
+        print(gene.build_team())
 
 
 GeneQueryService().get(
+    generations=1000,
+    samples=3000,
     on_begin=on_begin,
     on_end=on_end
 )
