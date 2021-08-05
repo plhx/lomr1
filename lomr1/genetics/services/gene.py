@@ -8,7 +8,7 @@ from ..domain.models import *
 
 class GeneQueryService(IQueryService):
     def get(self, generations=100, samples=1000, *, on_begin: Callable=None,
-        on_end: Callable=None) -> Iterable[MonsterGene]:
+        on_end: Callable=None, on_gameend: Callable=None) -> Iterable[MonsterGene]:
         genes = [MonsterGene.random() for _ in range(samples)]
         for generation in range(generations):
             if callable(on_begin):
@@ -21,6 +21,8 @@ class GeneQueryService(IQueryService):
                     winners.append(a)
                 else:
                     winners.append(b)
+            if callable(on_gameend):
+                on_gameend(generation, winners)
             children = []
             while len(children) < samples:
                 a, b = random.sample(winners, k=2)

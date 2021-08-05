@@ -16,6 +16,13 @@ class MonsterGene:
             ''.join('012345678-'[x] for x in self.value)
         )
 
+    def normalized(self) -> 'MonsterGene':
+        for i, x in enumerate(self.value):
+            if x != 9:
+                break
+        g = [self.value[i]] + sorted(self.value[i + 1:])
+        return MonsterGene(g + [9] * (10 - len(g)))
+
     @classmethod
     def random(cls, n=10) -> 'MonsterGene':
         while True:
