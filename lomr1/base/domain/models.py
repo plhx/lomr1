@@ -85,7 +85,7 @@ class Monster:
         )
 
     def __repr__(self) -> str:
-        return '<{}: (hp: {})>'.format(self.name, self.hp)
+        return self.name
 
     def __eq__(self, other: 'Monster') -> bool:
         return self.mid == other.mid

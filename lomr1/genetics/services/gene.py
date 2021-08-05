@@ -13,19 +13,22 @@ class GeneQueryService(IQueryService):
         for generation in range(generations):
             if callable(on_begin):
                 on_begin(generation, genes)
-            winners = []
+            winners, losers = [], []
             while genes:
                 a, b = genes.pop(), genes.pop()
                 team = GameService(a.build_team(), b.build_team()).play()
                 if team is Team.RED:
                     winners.append(a)
+                    losers.append(b)
                 else:
                     winners.append(b)
+                    losers.append(a)
             if callable(on_gameend):
                 on_gameend(generation, winners)
+            genes = winners + random.sample(losers, k=(len(losers) // 2) & -1)
             children = []
             while len(children) < samples:
-                a, b = random.sample(winners, k=2)
+                a, b = random.sample(genes, k=2)
                 r = random.random()
                 if r < 0.01:
                     children.append(a.cross(b))
