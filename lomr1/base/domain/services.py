@@ -1,6 +1,7 @@
 import collections
 import random
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
+from uuid import RESERVED_FUTURE
 from .models import *
 
 
@@ -57,34 +58,60 @@ class MonsterAttackService:
             defender.hp = max(defender.hp - damage, 0)
 
 
-class MonsterQueueService:
-    def __init__(self, team: Team, monsters: Iterable[Monster]=()):
+class MonsterQueueData:
+    def __init__(self, team: Team, monster: Monster, has_turn: bool=False):
         self.team = team
-        self.__queue = collections.deque(monsters)
+        self.monster = monster
+        self.has_turn = has_turn
 
-    def push(self, monster: Monster) -> None:
-        if monster in self.__queue:
-            return
-        elif monster.is_dead:
-            return
-        self.__queue.append(monster)
+    def __eq__(self, other: 'MonsterQueueData') -> bool:
+        return self.monster == other.monster
 
-    def pop(self) -> Optional[Monster]:
-        return None if self.is_empty else self.__queue.popleft()
 
-    def purge(self) -> None:
-        monsters = self.monsters
-        self.__queue.clear()
-        for monster in monsters:
-            self.push(monster)
+class MonsterQueueService:
+    def __init__(self):
+        self.__queue = collections.deque()
 
     @property
     def is_empty(self) -> bool:
         return not self.__queue
 
-    @property
-    def monsters(self) -> Iterable[Monster]:
-        return tuple(self.__queue)
+    def monsters(self, team: Optional[Team]=None) -> Iterable[MonsterQueueData]:
+        return [x for x in self.__queue if x.team == team or team is None]
+
+    def winner(self) -> Optional[Team]:
+        if len(self.monsters(Team.RED)) == 0:
+            return Team.BLUE
+        if len(self.monsters(Team.BLUE)) == 0:
+            return Team.RED
+        return None
+
+    def push(self, data: MonsterQueueData) -> None:
+        if data in self.__queue:
+            return
+        elif data.monster.is_dead:
+            return
+        self.__queue.append(data)
+
+    def pop(self) -> Optional[MonsterQueueData]:
+        if self.is_empty:
+            return None
+        if not self.__queue[0].has_turn:
+            monsters = self.monsters()
+            for m in monsters:
+                m.has_turn = True
+            random.shuffle(monsters)
+            self.__queue = collections.deque(monsters)
+        m = self.__queue.popleft()
+        m.has_turn = False
+        self.__queue.append(m)
+        return m
+
+    def purge(self) -> None:
+        monsters = self.monsters()
+        self.__queue.clear()
+        for m in monsters:
+            self.push(m)
 
 
 class GameService:
@@ -97,23 +124,19 @@ class GameService:
             raise ValueError('total sp cannot be more than 10')
         if sum(m.sp for m in team_blue) > 10:
             raise ValueError('total sp cannot be more than 10')
-        self.rng = random.Random()
         self.attack_service = MonsterAttackService()
-        teams = [
-            MonsterQueueService(Team.RED, team_red),
-            MonsterQueueService(Team.BLUE, team_blue)
-        ]
-        self.rng.shuffle(teams)
-        self.attackers, self.defenders = teams
+        self.queue = MonsterQueueService()
+        for monster in team_red:
+            self.queue.push(MonsterQueueData(Team.RED, monster))
+        for monster in team_blue:
+            self.queue.push(MonsterQueueData(Team.BLUE, monster))
 
     def play1(self) -> Team:
-        attacker = self.attackers.pop()
-        self.attack_service.attack(attacker, self.defenders.monsters)
-        self.defenders.purge()
-        self.attackers.push(attacker)
-        if self.defenders.is_empty:
-            return self.attackers.team
-        self.attackers, self.defenders = self.defenders, self.attackers
+        attacker = self.queue.pop()
+        defenders = [m.monster for m in self.queue.monsters(attacker.team.opposite)]
+        self.attack_service.attack(attacker.monster, defenders)
+        self.queue.purge()
+        return self.queue.winner()
 
     def play(self) -> Team:
         while True:

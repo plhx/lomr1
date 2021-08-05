@@ -115,3 +115,7 @@ class Monster:
 class Team(enum.IntFlag):
     RED = 1
     BLUE = 2
+
+    @property
+    def opposite(self) -> 'Team':
+        return self.BLUE if self is self.RED else self.RED
