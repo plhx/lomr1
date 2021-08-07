@@ -1,14 +1,14 @@
 import collections
 import random
-from typing import Iterable, Optional, Tuple
-from uuid import RESERVED_FUTURE
+from typing import Iterable, Optional
 from .models import *
 
 
 __all__ = [
     'MonsterAttackService',
     'MonsterQueueService',
-    'GameService'
+    'GameService',
+    'MonsterTeamService'
 ]
 
 
@@ -143,3 +143,47 @@ class GameService:
             team = self.play1()
             if team is not None:
                 return team
+
+
+class MonsterTeamService:
+    class Node:
+        def __init__(self, index, sp, parent=None, is_leader=False):
+            self.index = index
+            self.sp = sp
+            self.parent = parent
+            self.children = []
+            self.is_leader = is_leader
+
+        @property
+        def is_leaf(self) -> bool:
+            return not self.children
+
+        @property
+        def signature(self) -> Iterable[int]:
+            s = []
+            n = self
+            while n:
+                s.insert(0, n.index)
+                n = n.parent
+            return s
+
+    def sp10_combinations(self) -> Iterable[Iterable[int]]:
+        cost = [(i, m.sp) for i, m in enumerate(MonsterDataList)]
+        root = self.Node(None, 10)
+        result = []
+        for i, sp in cost:
+            if root.sp - sp >= 0:
+                n = self.Node(i, root.sp - sp, None, is_leader=True)
+                root.children.append(n)
+        q = collections.deque(root.children)
+        while q:
+            node = q.popleft()
+            samples = cost if node.is_leader else cost[node.index:]
+            for i, sp in samples:
+                if node.sp - sp >= 0:
+                    node.children.append(self.Node(i, node.sp - sp, node))
+            if node.is_leaf and node.sp == 0:
+                result.append(node.signature)
+            else:
+                q.extend(node.children)
+        return sorted(result)
